@@ -10,21 +10,15 @@ import {
 import type {
   Alert,
   Manhole,
-  Scenario,
   Severity,
   StatusLevel,
   Telemetry,
   Thresholds,
 } from '../model/types';
 import { assess, DEFAULT_THRESHOLDS, LEVEL_RANK } from '../model/evaluate';
-import {
-  INITIAL_SCENARIOS,
-  MANHOLES,
-  initialBootTimes,
-  initialTelemetry,
-  seedAlerts,
-} from '../data/seed';
-import { SimulatedTelemetryProvider, type TelemetryProvider } from '../data/simulator';
+import { MANHOLES } from '../data/seed';
+import { emptyTelemetry, type TelemetryProvider } from '../data/provider';
+import { ArduinoTelemetryProvider } from '../data/arduino';
 
 /* ------------------------------------------------------------------ */
 /* Routing                                                             */
@@ -72,10 +66,7 @@ function parseHash(hash: string): Route {
 /* State                                                               */
 /* ------------------------------------------------------------------ */
 
-export type GasUnitMode = 'ppm' | 'raw';
-
 export interface Settings {
-  gasUnit: GasUnitMode;
   pollMs: number;
   thresholds: Thresholds;
 }
@@ -85,7 +76,6 @@ export interface AppState {
   selectedId: string;
   telemetry: Record<string, Telemetry>;
   history: Record<string, Telemetry[]>;
-  scenarios: Record<string, Scenario>;
   bootTimes: Record<string, number>;
   alerts: Alert[];
   settings: Settings;
@@ -98,7 +88,6 @@ type Action =
   | { type: 'select'; id: string }
   | { type: 'tick'; batch: Record<string, Telemetry> }
   | { type: 'clock'; now: number }
-  | { type: 'scenario'; id: string; scenario: Scenario }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'ack'; id: string }
   | { type: 'ackAll' };
@@ -111,8 +100,10 @@ const HISTORY_LIMIT_ = HISTORY_LIMIT;
 function pushHistory(prev: Record<string, Telemetry[]>, batch: Record<string, Telemetry>) {
   const next: Record<string, Telemetry[]> = { ...prev };
   for (const id of Object.keys(batch)) {
+    const frame = batch[id];
+    if (!frame?.hasData) continue; // empty frames are not history
     const list = next[id] ?? [];
-    next[id] = [...list, batch[id]].slice(-HISTORY_LIMIT_);
+    next[id] = [...list, frame].slice(-HISTORY_LIMIT_);
   }
   return next;
 }
@@ -164,7 +155,7 @@ function diffAlerts(
     }
     if (prevT.deviceStatus === 'offline' && nextT.deviceStatus === 'online') {
       bootTimes[m.id] = state.now;
-      consider(m.id, 'device', 'info', 'Device reconnected');
+      consider(m.id, 'device', 'info', prevT.hasData ? 'Device reconnected' : 'Device connected');
       continue;
     }
     if (nextT.deviceStatus === 'offline') continue;
@@ -203,49 +194,6 @@ function reducer(state: AppState, action: Action): AppState {
     case 'clock':
       return { ...state, now: action.now };
 
-    case 'scenario': {
-      const scenarios = { ...state.scenarios, [action.id]: action.scenario };
-      const manhole = MANHOLES.find((m) => m.id === action.id);
-      if (!manhole) return { ...state, scenarios };
-
-      // Immediately re-render the fleet with the forced state so the demo
-      // response is instant, instead of waiting for the next poll tick.
-      const now = Date.now();
-      const prev = state.telemetry;
-      let frame = provider.poll({
-        manholes: [manhole],
-        previous: prev,
-        scenarios,
-        gasUnit: state.settings.gasUnit,
-        now,
-      })[action.id];
-
-      if (action.scenario === 'offline') {
-        // Freeze the last live frame and mark the device unreachable.
-        const lastLive = prev[action.id];
-        frame = lastLive
-          ? {
-              ...lastLive,
-              deviceStatus: 'offline',
-              wifiStatus: 'disconnected',
-              signalStrength: null,
-            }
-          : frame;
-      }
-
-      const batch = { ...prev, [action.id]: frame };
-      const { alerts, bootTimes } = diffAlerts({ ...state, now }, batch);
-      return {
-        ...state,
-        scenarios,
-        telemetry: batch,
-        history: pushHistory(state.history, { [action.id]: frame }),
-        alerts: [...alerts, ...state.alerts].slice(0, 80),
-        bootTimes,
-        now,
-      };
-    }
-
     case 'tick': {
       const batch = { ...state.telemetry, ...action.batch };
       const { alerts, bootTimes } = diffAlerts(state, action.batch);
@@ -279,41 +227,27 @@ function reducer(state: AppState, action: Action): AppState {
 /* Context                                                             */
 /* ------------------------------------------------------------------ */
 
-const provider: TelemetryProvider = new SimulatedTelemetryProvider();
+const provider: TelemetryProvider = new ArduinoTelemetryProvider();
 
 function initState(): AppState {
-  const now = Date.now();
-  const telemetry = initialTelemetry(INITIAL_SCENARIOS, now, (id, scenario, timestamp) => {
-    const manhole = MANHOLES.find((m) => m.id === id)!;
-    const frames = provider.poll({
-      manholes: [manhole],
-      previous: {},
-      scenarios: { [id]: scenario },
-      gasUnit: 'ppm',
-      now: timestamp,
-    });
-    const frame = frames[id];
-    if (scenario === 'offline') {
-      return {
-        ...frame,
-        deviceStatus: 'offline' as const,
-        wifiStatus: 'disconnected' as const,
-        signalStrength: null,
-      };
-    }
-    return frame;
-  });
+  // Nothing is seeded: every manhole starts with an empty "no data" frame and
+  // only ever shows values its device actually reported.
+  const telemetry: Record<string, Telemetry> = {};
+  const history: Record<string, Telemetry[]> = {};
+  for (const m of MANHOLES) {
+    telemetry[m.id] = emptyTelemetry(m.id);
+    history[m.id] = [];
+  }
 
   return {
     route: { page: 'live' },
     selectedId: 'MG-001',
     telemetry,
-    history: Object.fromEntries(Object.entries(telemetry).map(([k, v]) => [k, [v]])),
-    scenarios: { ...INITIAL_SCENARIOS },
-    bootTimes: initialBootTimes(now),
-    alerts: seedAlerts(now),
-    settings: { gasUnit: 'ppm', pollMs: 2000, thresholds: DEFAULT_THRESHOLDS },
-    now,
+    history,
+    bootTimes: {},
+    alerts: [],
+    settings: { pollMs: 2000, thresholds: DEFAULT_THRESHOLDS },
+    now: Date.now(),
   };
 }
 
@@ -328,7 +262,6 @@ export interface StoreValue extends AppState {
   unacknowledged: number;
   navigate: (route: Route) => void;
   select: (id: string) => void;
-  setScenario: (id: string, scenario: Scenario) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   acknowledge: (id: string) => void;
   acknowledgeAll: () => void;
@@ -364,8 +297,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         batch: provider.poll({
           manholes: MANHOLES,
           previous: telemetryRef.current,
-          scenarios: state.scenarios,
-          gasUnit: state.settings.gasUnit,
           now: Date.now(),
         }),
       });
@@ -373,7 +304,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     poll();
     const t = window.setInterval(poll, state.settings.pollMs);
     return () => window.clearInterval(t);
-  }, [state.settings.pollMs, state.settings.gasUnit, state.scenarios]);
+  }, [state.settings.pollMs]);
 
   const value = useMemo<StoreValue>(() => {
     const manhole = MANHOLES.find((m) => m.id === state.selectedId) ?? MANHOLES[0];
@@ -394,7 +325,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         else dispatch({ type: 'route', route });
       },
       select: (id) => dispatch({ type: 'select', id }),
-      setScenario: (id, scenario) => dispatch({ type: 'scenario', id, scenario }),
       updateSettings: (patch) => dispatch({ type: 'settings', patch }),
       acknowledge: (id) => dispatch({ type: 'ack', id }),
       acknowledgeAll: () => dispatch({ type: 'ackAll' }),

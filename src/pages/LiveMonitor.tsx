@@ -3,7 +3,6 @@ import { GasMonitors } from '../components/GasMonitors';
 import { WaterCard } from '../components/WaterCard';
 import { CurrentRisk } from '../components/CurrentRisk';
 import { DeviceHealth } from '../components/DeviceHealth';
-import { EnvironmentCard } from '../components/EnvironmentCard';
 import { CoverVibration } from '../components/CoverVibration';
 import { FleetPanel } from '../components/FleetPanel';
 import { LatestAlerts } from '../components/AlertsPanel';
@@ -13,8 +12,8 @@ import { ManholeCutaway } from '../components/ManholeCutaway';
 
 /**
  * Primary screen — answers, in order:
- * is it safe → what gases → water → why → device → environment →
- * cover/tamper → other manholes → alerts → fleet totals → system visual.
+ * is it safe → what gases → water → why → device → cover/tamper →
+ * other manholes → alerts → fleet totals → system visual.
  * DOM order doubles as the mobile reading order.
  */
 export function LiveMonitor() {
@@ -25,7 +24,6 @@ export function LiveMonitor() {
       <WaterCard />
       <CurrentRisk />
       <DeviceHealth />
-      <EnvironmentCard />
       <CoverVibration />
       <FleetPanel />
       <LatestAlerts />

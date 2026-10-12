@@ -5,10 +5,11 @@ import { IconDrop } from './icons';
 
 export function WaterCard() {
   const { selected, selectedTelemetry: t, settings } = useStore();
-  const pct = waterPct(t, selected);
+  const noWater = t.waterLevel === null;
+  const pct = noWater ? 0 : waterPct(t, selected);
   const th = settings.thresholds;
   const level =
-    t.deviceStatus === 'offline'
+    noWater || t.deviceStatus === 'offline'
       ? 'offline'
       : pct >= th.waterCritPct
         ? 'critical'
@@ -19,15 +20,17 @@ export function WaterCard() {
             : 'safe';
 
   const stateWord =
-    level === 'safe'
-      ? 'NORMAL'
-      : level === 'warning'
-        ? 'WARNING'
-        : level === 'high'
-          ? 'HIGH RISK'
-          : level === 'critical'
-            ? 'CRITICAL'
-            : 'STALE';
+    level === 'offline'
+      ? noWater
+        ? 'NO DATA'
+        : 'STALE'
+      : level === 'safe'
+        ? 'NORMAL'
+        : level === 'warning'
+          ? 'WARNING'
+          : level === 'high'
+            ? 'HIGH RISK'
+            : 'CRITICAL';
 
   return (
     <section className="panel area-water">
@@ -39,7 +42,11 @@ export function WaterCard() {
       </div>
       <div className="panel-body">
         <div className="water-wrap">
-          <div className="tank" role="img" aria-label={`Water level ${pct} percent`}>
+          <div
+            className="tank"
+            role="img"
+            aria-label={noWater ? 'Water level: no data' : `Water level ${pct} percent`}
+          >
             <div className={`tank-fill level-${level}`} style={{ height: `${pct}%` }} />
             <div className="tank-mark" style={{ bottom: `${th.waterCritPct}%` }}>
               <span>C {th.waterCritPct}</span>
@@ -53,8 +60,8 @@ export function WaterCard() {
           </div>
           <div className="water-info">
             <div className="water-label">Current level</div>
-            <div className={`water-pct ${toneClass(level)}`}>{pct}%</div>
-            <div className="water-cm">{t.waterLevel} cm</div>
+            <div className={`water-pct ${toneClass(level)}`}>{noWater ? '—' : `${pct}%`}</div>
+            <div className="water-cm">{noWater ? '—' : `${t.waterLevel} cm`}</div>
             <div className="water-depth">Depth: {selected.depthCm} cm</div>
             <div style={{ marginTop: 6 }}>
               <span className={`chip ${toneClass(level)}`}>

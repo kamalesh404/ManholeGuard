@@ -3,7 +3,9 @@ import { IconCover, IconVibration } from './icons';
 
 export function CoverVibration() {
   const { selectedTelemetry: t } = useStore();
+  const coverKnown = t.coverStatus !== null;
   const coverOpen = t.coverStatus === 'open';
+  const vibKnown = t.vibration !== null;
   const vibDetected = t.vibration === 'detected';
 
   return (
@@ -21,11 +23,15 @@ export function CoverVibration() {
                 <IconCover size={16} />
               </span>
             </div>
-            <div className={`state-main ${coverOpen ? 'tone-warning' : 'tone-safe'}`}>
-              <span className="dot" />
-              {coverOpen ? 'OPEN' : 'CLOSED'}
+            <div
+              className={`state-main ${!coverKnown ? 'tone-offline' : coverOpen ? 'tone-warning' : 'tone-safe'}`}
+            >
+              <span className="dot" style={!coverKnown ? { animation: 'none' } : undefined} />
+              {!coverKnown ? 'NO DATA' : coverOpen ? 'OPEN' : 'CLOSED'}
             </div>
-            <div className="state-sub">{coverOpen ? 'Warning' : 'Secure'}</div>
+            <div className="state-sub">
+              {!coverKnown ? 'Not reported by this device' : coverOpen ? 'Warning' : 'Secure'}
+            </div>
           </div>
 
           <div className={`state-card${vibDetected ? ' alerting' : ''}`}>
@@ -35,12 +41,14 @@ export function CoverVibration() {
                 <IconVibration size={16} />
               </span>
             </div>
-            <div className={`state-main ${vibDetected ? 'tone-warning' : 'tone-safe'}`}>
-              <span className="dot" />
-              {vibDetected ? 'ACTIVITY DETECTED' : 'NORMAL'}
+            <div
+              className={`state-main ${!vibKnown ? 'tone-offline' : vibDetected ? 'tone-warning' : 'tone-safe'}`}
+            >
+              <span className="dot" style={!vibKnown ? { animation: 'none' } : undefined} />
+              {!vibKnown ? 'NO DATA' : vibDetected ? 'ACTIVITY DETECTED' : 'NORMAL'}
             </div>
             <div className="state-sub">
-              {vibDetected ? 'Warning' : 'No unusual activity'}
+              {!vibKnown ? 'Not reported by this device' : vibDetected ? 'Warning' : 'No unusual activity'}
             </div>
           </div>
         </div>

@@ -157,42 +157,6 @@ export function IconDrop({ size = 24, className, style }: P) {
   );
 }
 
-export function IconThermo({ size = 24, className, style }: P) {
-  return (
-    <svg
-      {...base(size)}
-      className={className}
-      style={style}
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M14 13.8V5a2 2 0 1 0-4 0v8.8a4 4 0 1 0 4 0Z" />
-    </svg>
-  );
-}
-
-export function IconHumidity({ size = 24, className, style }: P) {
-  return (
-    <svg
-      {...base(size)}
-      className={className}
-      style={style}
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M12 3.4c3.2 3.8 5.3 6.3 5.3 8.9A5.3 5.3 0 0 1 12 17.6a5.3 5.3 0 0 1-5.3-5.3c0-2.6 2.1-5.1 5.3-8.9Z" />
-      <path d="M6.6 19.4h10.8" />
-    </svg>
-  );
-}
-
 export function IconCover({ size = 24, className, style }: P) {
   return (
     <svg
@@ -251,26 +215,6 @@ export function IconChip({ size = 24, className, style }: P) {
   );
 }
 
-export function IconWifi({ size = 24, className, style }: P) {
-  return (
-    <svg
-      {...base(size)}
-      className={className}
-      style={style}
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M2.6 8.8a14.5 14.5 0 0 1 18.8 0" />
-      <path d="M5.8 12.5a9.6 9.6 0 0 1 12.4 0" />
-      <path d="M9 16.1a4.8 4.8 0 0 1 6 0" />
-      <path d="M12 19.4h.01" />
-    </svg>
-  );
-}
-
 export function IconBattery({ size = 24, className, style }: P) {
   return (
     <svg
@@ -285,6 +229,28 @@ export function IconBattery({ size = 24, className, style }: P) {
       <rect x="2.6" y="8" width="16" height="8" rx="2" />
       <path d="M21.4 11v2" />
       <rect x="4.8" y="10.2" width="8" height="3.6" rx="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** USB-serial link (Arduino over a COM port). */
+export function IconSerial({ size = 24, className, style }: P) {
+  return (
+    <svg
+      {...base(size)}
+      className={className}
+      style={style}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+      aria-hidden
+    >
+      <path d="M12 21V11" />
+      <path d="M8.5 11h7l1.4-4.2a1.4 1.4 0 0 0-1.3-1.8H8.4a1.4 1.4 0 0 0-1.3 1.8Z" />
+      <path d="M10 7.4v1.8M14 7.4v1.8" />
+      <path d="M5.5 4.5 8 3M18.5 4.5 16 3" />
     </svg>
   );
 }

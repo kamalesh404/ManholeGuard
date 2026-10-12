@@ -42,8 +42,10 @@ export function FleetPanel() {
                 />
                 <span className="fleet-id">{m.id}</span>
                 <span className="fleet-name">{m.name}</span>
-                <span className={`fleet-batt ${t.battery <= 30 ? 'tone-warning' : ''}`}>
-                  {t.battery}%
+                <span
+                  className={`fleet-batt ${t.battery !== null && t.battery <= 30 ? 'tone-warning' : ''}`}
+                >
+                  {!t.hasData ? '—' : t.battery === null ? 'USB' : `${t.battery}%`}
                 </span>
                 <button
                   className="fleet-go"

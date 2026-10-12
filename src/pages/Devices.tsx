@@ -1,7 +1,7 @@
 import { useStore } from '../state/store';
 import { assess } from '../model/evaluate';
 import { formatAgo, formatUptime, STATUS_LABEL, toneClass } from '../lib/format';
-import { Esp32Board } from '../components/DeviceHealth';
+import { ArduinoBoard } from '../components/DeviceHealth';
 import { IconChevronRight } from '../components/icons';
 
 export function Devices() {
@@ -13,7 +13,7 @@ export function Devices() {
         <div>
           <h1 className="page-title">Devices</h1>
           <p className="page-desc">
-            IoT controllers reporting to the gateway. Health is derived from the latest heartbeat.
+            Arduino controllers reporting over serial. Health is derived from the latest heartbeat.
           </p>
         </div>
         <span className="chip">{manholes.length} controllers</span>
@@ -31,11 +31,11 @@ export function Devices() {
             ['Manhole', `${m.id} · ${m.name}`],
             ['Controller', m.device.model],
             ['Firmware', m.device.firmware],
-            ['Wi-Fi', t.wifiStatus === 'connected' ? 'Connected' : 'Disconnected'],
-            ['Signal', t.signalStrength !== null ? `${t.signalStrength} dBm` : '—'],
-            ['Battery', `${t.battery}%`],
+            ['Link', t.linkStatus === 'connected' ? 'Connected' : 'Disconnected'],
+            ['Transport', t.linkDetail ?? '—'],
+            ['Power', !t.hasData ? '—' : t.battery === null ? 'USB powered' : `${t.battery}%`],
             ['Uptime', online ? formatUptime(uptime) : '—'],
-            ['Last heartbeat', formatAgo(t.timestamp, now)],
+            ['Last heartbeat', t.hasData ? formatAgo(t.timestamp, now) : '—'],
           ];
 
           return (
@@ -59,20 +59,22 @@ export function Devices() {
                         <span className="dev-val">{v}</span>
                       </div>
                     ))}
-                    <div className="dev-row" style={{ display: 'block' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                        <span className="dev-key">Battery level</span>
-                        <span className={`dev-val ${t.battery <= 30 ? 'tone-warning' : 'tone-safe'}`}>
-                          {t.battery}%
-                        </span>
+                    {t.hasData && t.battery !== null && (
+                      <div className="dev-row" style={{ display: 'block' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                          <span className="dev-key">Battery level</span>
+                          <span className={`dev-val ${t.battery <= 30 ? 'tone-warning' : 'tone-safe'}`}>
+                            {t.battery}%
+                          </span>
+                        </div>
+                        <div className={`batt-bar ${t.battery <= 30 ? 'tone-warning' : 'tone-safe'}`}>
+                          <div className="batt-fill" style={{ width: `${t.battery}%` }} />
+                        </div>
                       </div>
-                      <div className={`batt-bar ${t.battery <= 30 ? 'tone-warning' : 'tone-safe'}`}>
-                        <div className="batt-fill" style={{ width: `${t.battery}%` }} />
-                      </div>
-                    </div>
+                    )}
                   </div>
                   <div className="esp-visual">
-                    <Esp32Board online={online} width={92} />
+                    <ArduinoBoard online={online} width={92} />
                   </div>
                 </div>
 

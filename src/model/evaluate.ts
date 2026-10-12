@@ -47,7 +47,8 @@ export const STATE_WORD: Record<StatusLevel, string> = {
   offline: 'Offline',
 };
 
-const num = (v: number, digits = 0) =>
+/** Number for prose — keeps up to 2 decimals so sensor precision survives. */
+const num = (v: number, digits = 2) =>
   v.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 
 /** Classify a gas reading against its configured band. */
@@ -59,7 +60,7 @@ export function gasLevel(value: number, warn: number, high: number, crit: number
 }
 
 export function waterPct(t: Telemetry, m: Manhole): number {
-  if (m.depthCm <= 0) return 0;
+  if (t.waterLevel === null || m.depthCm <= 0) return 0;
   return Math.min(100, Math.round((t.waterLevel / m.depthCm) * 100));
 }
 
@@ -74,14 +75,57 @@ export function assess(t: Telemetry, m: Manhole, th: Thresholds): RiskAssessment
   const sensors: SensorEval[] = [];
   const lines: RiskAssessment['lines'] = [];
 
+  // --- Device has never reported: honest empty state, zero fabricated values.
+  if (!t.hasData) {
+    const noReport = (key: string, label: string): SensorEval => ({
+      key,
+      label,
+      value: null,
+      unit: '',
+      level: 'offline',
+      stateLabel: 'No data',
+      detail: `${label} — no telemetry received`,
+    });
+    sensors.push(
+      noReport('ch4', GAS_LABELS.ch4.symbol),
+      noReport('co', GAS_LABELS.co.symbol),
+      noReport('h2s', GAS_LABELS.h2s.symbol),
+      noReport('water', 'Water level'),
+      noReport('cover', 'Manhole cover'),
+      noReport('vibration', 'Vibration / tamper'),
+      noReport('battery', 'Battery'),
+      noReport('device', 'Device'),
+    );
+    return {
+      status: 'offline',
+      headline: 'DEVICE OFFLINE',
+      subtitle: 'No telemetry received — device not connected',
+      lines: [{ tone: 'offline', text: 'No telemetry received — device not connected' }],
+      sensors,
+    };
+  }
+
   const unitWord = t.gasUnit === 'ppm' ? 'ppm' : 'raw';
   const compareWord = t.gasUnit === 'ppm' ? '' : ' (raw ADC)';
 
   // --- Gases -------------------------------------------------------------
   (['ch4', 'co', 'h2s'] as GasKey[]).forEach((key) => {
     const meta = GAS_LABELS[key];
-    const band = th.gases[key][t.gasUnit];
     const value = t[key];
+    if (value === null) {
+      // Channel not reported by this device — excluded from the overall status.
+      sensors.push({
+        key,
+        label: meta.symbol,
+        value: null,
+        unit: '',
+        level: 'offline',
+        stateLabel: 'No data',
+        detail: `${meta.symbol} — not reported by this device`,
+      });
+      return;
+    }
+    const band = th.gases[key][t.gasUnit];
     const level: StatusLevel = offline ? 'offline' : gasLevel(value, band.warn, band.high, band.crit);
     sensors.push({
       key,
@@ -107,94 +151,142 @@ export function assess(t: Telemetry, m: Manhole, th: Thresholds): RiskAssessment
   });
 
   // --- Water -------------------------------------------------------------
-  const pct = waterPct(t, m);
-  const waterLevel: StatusLevel = offline
-    ? 'offline'
-    : pct >= th.waterCritPct
-      ? 'critical'
-      : pct >= th.waterHighPct
-        ? 'high'
-        : pct >= th.waterWarnPct
-          ? 'warning'
-          : 'safe';
-  sensors.push({
-    key: 'water',
-    label: 'Water level',
-    value: pct,
-    unit: '%',
-    level: waterLevel,
-    stateLabel: STATE_WORD[waterLevel],
-    detail:
+  const cm = t.waterLevel;
+  if (cm === null) {
+    sensors.push({
+      key: 'water',
+      label: 'Water level',
+      value: null,
+      unit: '',
+      level: 'offline',
+      stateLabel: 'No data',
+      detail: 'Water level — not reported by this device',
+    });
+  } else {
+    const pct = waterPct(t, m);
+    const waterLevel: StatusLevel = offline
+      ? 'offline'
+      : pct >= th.waterCritPct
+        ? 'critical'
+        : pct >= th.waterHighPct
+          ? 'high'
+          : pct >= th.waterWarnPct
+            ? 'warning'
+            : 'safe';
+    sensors.push({
+      key: 'water',
+      label: 'Water level',
+      value: pct,
+      unit: '%',
+      level: waterLevel,
+      stateLabel: STATE_WORD[waterLevel],
+      detail:
+        waterLevel === 'safe'
+          ? `Water level normal (${num(cm)} cm of ${m.depthCm} cm)`
+          : `Water level ${num(cm)} cm (${pct}%) above ${
+              waterLevel === 'critical' ? 'critical' : waterLevel === 'high' ? 'high-risk' : 'warning'
+            } threshold (${th.waterCritPct}%)`,
+    });
+    lines.push(
       waterLevel === 'safe'
-        ? `Water level normal (${num(t.waterLevel)} cm of ${m.depthCm} cm)`
-        : `Water level ${num(t.waterLevel)} cm (${pct}%) above ${
-            waterLevel === 'critical' ? 'critical' : waterLevel === 'high' ? 'high-risk' : 'warning'
-          } threshold (${th.waterCritPct}%)`,
-  });
-  lines.push(
-    waterLevel === 'safe'
-      ? { tone: 'ok', text: `Water level normal (${num(t.waterLevel)} cm · ${pct}%)` }
-      : {
-          tone: waterLevel,
-          text: `Water level ${num(t.waterLevel)} cm (${pct}%) above ${
-            waterLevel === 'critical' ? 'critical' : waterLevel === 'high' ? 'high-risk' : 'warning'
-          } threshold (${waterLevel === 'critical' ? th.waterCritPct : waterLevel === 'high' ? th.waterHighPct : th.waterWarnPct}%)`,
-        },
-  );
+        ? { tone: 'ok', text: `Water level normal (${num(cm)} cm · ${pct}%)` }
+        : {
+            tone: waterLevel,
+            text: `Water level ${num(cm)} cm (${pct}%) above ${
+              waterLevel === 'critical' ? 'critical' : waterLevel === 'high' ? 'high-risk' : 'warning'
+            } threshold (${waterLevel === 'critical' ? th.waterCritPct : waterLevel === 'high' ? th.waterHighPct : th.waterWarnPct}%)`,
+          },
+    );
+  }
 
   // --- Cover -------------------------------------------------------------
-  const coverLevel: StatusLevel = offline ? 'offline' : t.coverStatus === 'open' ? 'warning' : 'safe';
-  sensors.push({
-    key: 'cover',
-    label: 'Manhole cover',
-    value: t.coverStatus,
-    unit: '',
-    level: coverLevel,
-    stateLabel: t.coverStatus === 'open' ? 'Open' : 'Closed',
-    detail: t.coverStatus === 'open' ? 'Manhole cover is open' : 'Cover secured',
-  });
-  lines.push(
-    t.coverStatus === 'open'
-      ? { tone: 'warning', text: 'Manhole cover is open — unauthorized access possible' }
-      : { tone: 'ok', text: 'Cover secured' },
-  );
+  const coverStatus = t.coverStatus;
+  if (coverStatus === null) {
+    sensors.push({
+      key: 'cover',
+      label: 'Manhole cover',
+      value: null,
+      unit: '',
+      level: 'offline',
+      stateLabel: 'No data',
+      detail: 'Cover state — not reported by this device',
+    });
+  } else {
+    const coverLevel: StatusLevel = offline ? 'offline' : coverStatus === 'open' ? 'warning' : 'safe';
+    sensors.push({
+      key: 'cover',
+      label: 'Manhole cover',
+      value: coverStatus,
+      unit: '',
+      level: coverLevel,
+      stateLabel: coverStatus === 'open' ? 'Open' : 'Closed',
+      detail: coverStatus === 'open' ? 'Manhole cover is open' : 'Cover secured',
+    });
+    lines.push(
+      coverStatus === 'open'
+        ? { tone: 'warning', text: 'Manhole cover is open — unauthorized access possible' }
+        : { tone: 'ok', text: 'Cover secured' },
+    );
+  }
 
   // --- Vibration / tamper ------------------------------------------------
-  const vibLevel: StatusLevel = offline ? 'offline' : t.vibration === 'detected' ? 'warning' : 'safe';
-  sensors.push({
-    key: 'vibration',
-    label: 'Vibration / tamper',
-    value: t.vibration,
-    unit: '',
-    level: vibLevel,
-    stateLabel: t.vibration === 'detected' ? 'Activity detected' : 'Normal',
-    detail: t.vibration === 'detected' ? 'Vibration / tamper activity detected' : 'No unusual activity',
-  });
-  lines.push(
-    t.vibration === 'detected'
-      ? { tone: 'warning', text: 'Vibration / tamper activity detected' }
-      : { tone: 'ok', text: 'No unusual vibration' },
-  );
+  const vibration = t.vibration;
+  if (vibration === null) {
+    sensors.push({
+      key: 'vibration',
+      label: 'Vibration / tamper',
+      value: null,
+      unit: '',
+      level: 'offline',
+      stateLabel: 'No data',
+      detail: 'Vibration — not reported by this device',
+    });
+  } else {
+    const vibLevel: StatusLevel = offline ? 'offline' : vibration === 'detected' ? 'warning' : 'safe';
+    sensors.push({
+      key: 'vibration',
+      label: 'Vibration / tamper',
+      value: vibration,
+      unit: '',
+      level: vibLevel,
+      stateLabel: vibration === 'detected' ? 'Activity detected' : 'Normal',
+      detail: vibration === 'detected' ? 'Vibration / tamper activity detected' : 'No unusual activity',
+    });
+    lines.push(
+      vibration === 'detected'
+        ? { tone: 'warning', text: 'Vibration / tamper activity detected' }
+        : { tone: 'ok', text: 'No unusual vibration' },
+    );
+  }
 
-  // --- Battery -----------------------------------------------------------
+  // --- Power -------------------------------------------------------------
+  // battery === null means the node runs on USB/mains power — nothing to warn about.
+  const batt = t.battery;
   const battLevel: StatusLevel = offline
     ? 'offline'
-    : t.battery <= th.batteryWarnPct
-      ? 'warning'
-      : 'safe';
+    : batt === null
+      ? 'safe'
+      : batt <= th.batteryWarnPct
+        ? 'warning'
+        : 'safe';
   sensors.push({
     key: 'battery',
-    label: 'Battery',
-    value: t.battery,
-    unit: '%',
+    label: batt === null ? 'Power' : 'Battery',
+    value: batt,
+    unit: batt === null ? '' : '%',
     level: battLevel,
-    stateLabel: battLevel === 'safe' ? 'Normal' : 'Low',
-    detail: `Battery at ${num(t.battery)}%${battLevel === 'warning' ? ` — below ${th.batteryWarnPct}% threshold` : ''}`,
+    stateLabel: batt === null ? 'USB power' : battLevel === 'safe' ? 'Normal' : 'Low',
+    detail:
+      batt === null
+        ? 'Powered over USB — no battery fitted'
+        : `Battery at ${num(batt)}%${battLevel === 'warning' ? ` — below ${th.batteryWarnPct}% threshold` : ''}`,
   });
-  if (battLevel === 'warning') {
-    lines.push({ tone: 'warning', text: `Battery at ${num(t.battery)}% — below ${th.batteryWarnPct}% threshold` });
+  if (batt === null) {
+    if (!offline) lines.push({ tone: 'ok', text: 'Powered over USB' });
+  } else if (battLevel === 'warning') {
+    lines.push({ tone: 'warning', text: `Battery at ${num(batt)}% — below ${th.batteryWarnPct}% threshold` });
   } else if (!offline) {
-    lines.push({ tone: 'ok', text: `Battery ${num(t.battery)}%` });
+    lines.push({ tone: 'ok', text: `Battery ${num(batt)}%` });
   }
 
   // --- Connectivity ------------------------------------------------------
@@ -217,9 +309,10 @@ export function assess(t: Telemetry, m: Manhole, th: Thresholds): RiskAssessment
   }
 
   // --- Overall -----------------------------------------------------------
+  // Channels the device doesn't report (value null) never drive the status.
   const status = offline
     ? 'offline'
-    : sensors.reduce<StatusLevel>((acc, s) => maxLevel(acc, s.level), 'safe');
+    : sensors.reduce<StatusLevel>((acc, s) => (s.value === null ? acc : maxLevel(acc, s.level)), 'safe');
 
   const headline =
     status === 'safe'

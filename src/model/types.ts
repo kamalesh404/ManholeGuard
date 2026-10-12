@@ -2,7 +2,8 @@
  * MANHOLEGUARD — core data model.
  *
  * These types describe the contract between the dashboard and any telemetry
- * source (simulated today, an ESP32 gateway / MQTT / REST endpoint later).
+ * source (live Arduino USB serial today; HTTP/MQTT gateways later). Values are
+ * nullable — a device that never reported shows an honest "no data" state.
  * The UI is written against these types only — it never assumes example
  * values or a specific transport.
  */
@@ -27,10 +28,8 @@ export type GasUnit = 'ppm' | 'raw';
 export type CoverStatus = 'closed' | 'open';
 export type VibrationState = 'normal' | 'detected';
 export type DeviceStatus = 'online' | 'offline';
-export type WifiStatus = 'connected' | 'disconnected';
-
-/** Demo scenario forced onto a manhole by the simulation controls. */
-export type Scenario = 'safe' | 'warning' | 'high' | 'critical' | 'offline';
+/** Link between a device and this dashboard (USB serial for Arduino nodes). */
+export type LinkStatus = 'connected' | 'disconnected';
 
 /** Alarm thresholds for one gas channel in one unit mode. */
 export interface GasThreshold {
@@ -50,30 +49,34 @@ export interface Thresholds {
   batteryWarnPct: number;
 }
 
-/** One telemetry frame produced by a device (or by the simulator). */
+/**
+ * One telemetry frame produced by a device.
+ * Every sensor field is nullable: null means the device has never reported
+ * that channel (the UI must show an honest "—" / "no data", never a guess).
+ */
 export interface Telemetry {
   manholeId: string;
-  /** Epoch ms when this frame was produced. */
+  /** Epoch ms when this frame was produced; 0 while the device is silent. */
   timestamp: number;
+  /** False until the device has ever reported — no values are known yet. */
+  hasData: boolean;
   gasUnit: GasUnit;
-  ch4: number;
-  co: number;
-  h2s: number;
+  ch4: number | null;
+  co: number | null;
+  h2s: number | null;
   /** Water depth reading in cm. */
-  waterLevel: number;
-  temperature: number;
-  humidity: number;
-  coverStatus: CoverStatus;
-  vibration: VibrationState;
-  /** Battery percentage 0–100. */
-  battery: number;
-  wifiStatus: WifiStatus;
-  /** RSSI in dBm, null when disconnected. */
-  signalStrength: number | null;
+  waterLevel: number | null;
+  coverStatus: CoverStatus | null;
+  vibration: VibrationState | null;
+  /** Battery percentage 0–100; null = mains/USB powered (no battery fitted). */
+  battery: number | null;
+  linkStatus: LinkStatus;
+  /** Transport detail, e.g. "USB serial · 9600 baud"; null when the link is down. */
+  linkDetail: string | null;
   deviceStatus: DeviceStatus;
 }
 
-/** Physical IoT controller installed at a manhole. */
+/** Physical IoT controller installed at a manhole (Arduino board). */
 export interface Device {
   id: string;
   model: string;

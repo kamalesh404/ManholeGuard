@@ -19,10 +19,12 @@ export function StatusHero() {
             Depth {selected.depthCm} cm
           </span>
           <span className="chip">
-            Telemetry {formatClock(t.timestamp)} ({formatAgo(t.timestamp, now)})
+            {t.hasData
+              ? `Telemetry ${formatClock(t.timestamp)} (${formatAgo(t.timestamp, now)})`
+              : 'No telemetry yet'}
           </span>
           <span className="chip" title={provider.label}>
-            {provider.kind === 'simulated' ? 'Simulated feed' : 'Live feed'}
+            {!t.hasData ? 'No data' : t.deviceStatus === 'online' ? 'Live feed' : 'Last known'}
           </span>
         </div>
       </div>

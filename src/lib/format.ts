@@ -57,8 +57,17 @@ export const STATUS_LABEL: Record<StatusLevel, string> = {
 export const toneClass = (level: StatusLevel | 'ok'): string =>
   level === 'ok' ? 'tone-safe' : `tone-${level}`;
 
+/**
+ * Sensor values keep the precision the device actually sent: up to `maxDp`
+ * decimals with trailing zeros trimmed, so whole numbers stay clean.
+ *   412.35 → "412.35"  ·  412.30 → "412.3"  ·  420 → "420"
+ */
+export function fmtSensor(value: number | null | undefined, maxDp = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return value.toFixed(maxDp).replace(/\.?0+$/, '');
+}
+
 /** Value display that never pretends raw counts are calibrated ppm. */
 export function gasDisplay(value: number, unit: 'ppm' | 'raw'): string {
-  if (unit === 'ppm') return `${Math.round(value)} ppm`;
-  return `${Math.round(value)} raw`;
+  return `${fmtSensor(value)} ${unit}`;
 }

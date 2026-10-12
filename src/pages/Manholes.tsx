@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import { assess } from '../model/evaluate';
-import { formatAgo, STATUS_LABEL, toneClass } from '../lib/format';
+import { fmtSensor, formatAgo, STATUS_LABEL, toneClass } from '../lib/format';
 import { IconChevronRight } from '../components/icons';
 
 export function Manholes() {
@@ -24,7 +24,8 @@ export function Manholes() {
           const t = telemetry[m.id];
           const a = assess(t, m, settings.thresholds);
           const tone = toneClass(a.status);
-          const waterPctValue = Math.round((t.waterLevel / m.depthCm) * 100);
+          const waterPctValue =
+            t.waterLevel === null ? null : Math.round((t.waterLevel / m.depthCm) * 100);
           const sensorOf = (key: string) => a.sensors.find((s) => s.key === key)!;
 
           return (
@@ -55,43 +56,44 @@ export function Manholes() {
                   <div className="mh-mini">
                     <div className="mh-mini-label">CH₄</div>
                     <div className={`mh-mini-value ${toneClass(sensorOf('ch4').level)}`}>
-                      {Math.round(t.ch4)}
+                      {fmtSensor(t.ch4)}
                       <span className="muted" style={{ fontSize: 10 }}>
-                        {' '}
-                        {t.gasUnit === 'ppm' ? 'ppm' : 'raw'}
+                        {t.hasData ? ` ${t.gasUnit === 'ppm' ? 'ppm' : 'raw'}` : ''}
                       </span>
                     </div>
                   </div>
                   <div className="mh-mini">
                     <div className="mh-mini-label">CO</div>
                     <div className={`mh-mini-value ${toneClass(sensorOf('co').level)}`}>
-                      {Math.round(t.co)}
+                      {fmtSensor(t.co)}
                       <span className="muted" style={{ fontSize: 10 }}>
-                        {' '}
-                        {t.gasUnit === 'ppm' ? 'ppm' : 'raw'}
+                        {t.hasData ? ` ${t.gasUnit === 'ppm' ? 'ppm' : 'raw'}` : ''}
                       </span>
                     </div>
                   </div>
                   <div className="mh-mini">
                     <div className="mh-mini-label">H₂S</div>
                     <div className={`mh-mini-value ${toneClass(sensorOf('h2s').level)}`}>
-                      {Math.round(t.h2s)}
+                      {fmtSensor(t.h2s)}
                       <span className="muted" style={{ fontSize: 10 }}>
-                        {' '}
-                        {t.gasUnit === 'ppm' ? 'ppm' : 'raw'}
+                        {t.hasData ? ` ${t.gasUnit === 'ppm' ? 'ppm' : 'raw'}` : ''}
                       </span>
                     </div>
                   </div>
                   <div className="mh-mini">
                     <div className="mh-mini-label">Water</div>
                     <div className={`mh-mini-value ${toneClass(sensorOf('water').level)}`}>
-                      {waterPctValue}%
+                      {waterPctValue === null ? '—' : `${waterPctValue}%`}
                     </div>
                   </div>
                   <div className="mh-mini">
-                    <div className="mh-mini-label">Battery</div>
-                    <div className={`mh-mini-value ${t.battery <= 30 ? 'tone-warning' : ''}`}>
-                      {t.battery}%
+                    <div className="mh-mini-label">Power</div>
+                    <div
+                      className={`mh-mini-value ${
+                        t.battery !== null && t.battery <= 30 ? 'tone-warning' : ''
+                      }`}
+                    >
+                      {!t.hasData ? '—' : t.battery === null ? 'USB' : `${t.battery}%`}
                     </div>
                   </div>
                   <div className="mh-mini">
@@ -100,15 +102,16 @@ export function Manholes() {
                       className={`mh-mini-value ${t.coverStatus === 'open' ? 'tone-warning' : ''}`}
                       style={{ fontSize: 13 }}
                     >
-                      {t.coverStatus.toUpperCase()}
+                      {t.coverStatus === null ? '—' : t.coverStatus.toUpperCase()}
                     </div>
                   </div>
                 </div>
 
                 <div className="mh-card-foot">
                   <span>
-                    {t.deviceStatus === 'online' ? 'Device online' : 'Device offline'} · updated{' '}
-                    {formatAgo(t.timestamp, now)}
+                    {t.hasData
+                      ? `${t.deviceStatus === 'online' ? 'Device online' : 'Device offline'} · updated ${formatAgo(t.timestamp, now)}`
+                      : 'No data · never reported'}
                   </span>
                   <span className={tone} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     Detail <IconChevronRight size={13} />

@@ -1,6 +1,5 @@
 import { useStore } from './state/store';
 import { Header } from './components/Header';
-import { DemoBar } from './components/DemoBar';
 import { LiveMonitor } from './pages/LiveMonitor';
 import { Manholes } from './pages/Manholes';
 import { ManholeDetail } from './pages/ManholeDetail';
@@ -23,7 +22,6 @@ export function App() {
         {route.page === 'devices' && <Devices />}
         {route.page === 'settings' && <Settings />}
       </main>
-      <DemoBar />
     </div>
   );
 }

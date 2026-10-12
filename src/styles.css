@@ -312,18 +312,6 @@ a {
   white-space: nowrap;
 }
 
-.demo-badge {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: #ffd88a;
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px dashed rgba(251, 191, 36, 0.55);
-  padding: 5px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-
 /* ------------------------------------------------------------------
    Page shell
    ------------------------------------------------------------------ */
@@ -495,7 +483,7 @@ a {
   grid-template-areas:
     'hero hero hero hero hero hero hero hero risk risk risk risk'
     'gases gases gases gases gases gases gases gases device device device device'
-    'water water water water env env env env covervib covervib covervib covervib'
+    'water water water water covervib covervib covervib covervib covervib covervib covervib covervib'
     'visual visual visual visual visual visual visual map map map map map'
     'fleet fleet fleet fleet fleet alerts alerts alerts alerts overview overview overview';
 }
@@ -514,9 +502,6 @@ a {
 }
 .area-device {
   grid-area: device;
-}
-.area-env {
-  grid-area: env;
 }
 .area-covervib {
   grid-area: covervib;
@@ -860,53 +845,6 @@ a {
 .water-depth {
   font-size: 11.5px;
   color: var(--text-faint);
-}
-
-/* ------------------------------------------------------------------
-   Environment / stat cards
-   ------------------------------------------------------------------ */
-
-.env-grid {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 10px;
-  height: 100%;
-}
-
-.stat-card {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.022);
-  border-radius: var(--radius-sm);
-  padding: 12px 13px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.stat-label {
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.stat-value {
-  font-family: var(--mono);
-  font-size: 25px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.stat-value small {
-  font-size: 12px;
-  color: var(--text-faint);
-  font-weight: 500;
-  margin-left: 3px;
 }
 
 /* ------------------------------------------------------------------
@@ -1363,99 +1301,6 @@ a {
 }
 
 /* ------------------------------------------------------------------
-   Demo control bar
-   ------------------------------------------------------------------ */
-
-.demo-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 22px;
-  background: rgba(7, 9, 16, 0.94);
-  border-top: 1px solid rgba(251, 191, 36, 0.28);
-  backdrop-filter: blur(14px);
-  overflow-x: auto;
-}
-
-.demo-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #ffd88a;
-  white-space: nowrap;
-}
-
-.demo-target {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-}
-
-.demo-btns {
-  display: flex;
-  gap: 7px;
-}
-
-.demo-btn {
-  border: 1px solid var(--line-strong);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-dim);
-  font-size: 10.5px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 7px 12px;
-  border-radius: 8px;
-  white-space: nowrap;
-  transition: background 130ms ease, border-color 130ms ease, color 130ms ease;
-}
-
-.demo-btn:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.demo-btn.active[data-level='safe'] {
-  color: var(--safe);
-  border-color: rgba(52, 211, 153, 0.6);
-  background: rgba(52, 211, 153, 0.12);
-}
-.demo-btn.active[data-level='warning'] {
-  color: var(--warning);
-  border-color: rgba(251, 191, 36, 0.6);
-  background: rgba(251, 191, 36, 0.12);
-}
-.demo-btn.active[data-level='high'] {
-  color: var(--high);
-  border-color: rgba(251, 146, 60, 0.65);
-  background: rgba(251, 146, 60, 0.14);
-}
-.demo-btn.active[data-level='critical'] {
-  color: var(--critical);
-  border-color: rgba(244, 87, 79, 0.65);
-  background: rgba(244, 87, 79, 0.14);
-}
-.demo-btn.active[data-level='offline'] {
-  color: var(--offline);
-  border-color: rgba(138, 147, 165, 0.6);
-  background: rgba(138, 147, 165, 0.14);
-}
-
-.demo-note {
-  font-size: 10.5px;
-  color: var(--text-faint);
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-/* ------------------------------------------------------------------
    Manholes page / detail page / devices page
    ------------------------------------------------------------------ */
 
@@ -1557,7 +1402,7 @@ a {
   grid-template-areas:
     'hero hero hero hero hero hero hero risk risk risk risk risk'
     'gases gases gases gases gases gases gases gases gases gases gases gases'
-    'water water water water device device device device env env env env'
+    'water water water water device device device device device device device device'
     'telemetry telemetry telemetry telemetry telemetry telemetry telemetry alerts alerts alerts alerts alerts'
     'visual visual visual visual visual visual visual visual visual visual visual visual';
 }
@@ -1771,7 +1616,7 @@ a {
     grid-template-areas:
       'hero hero hero hero risk risk'
       'gases gases gases gases gases gases'
-      'water water water env env env'
+      'water water water water water water'
       'device device device covervib covervib covervib'
       'visual visual visual visual visual visual'
       'map map map fleet fleet fleet'
@@ -1785,8 +1630,8 @@ a {
       'risk risk risk risk risk risk'
       'gases gases gases gases gases gases'
       'water water water device device device'
-      'env env env telemetry telemetry telemetry'
-      'alerts alerts alerts telemetry telemetry telemetry'
+      'telemetry telemetry telemetry telemetry telemetry telemetry'
+      'alerts alerts alerts alerts alerts alerts'
       'visual visual visual visual visual visual';
   }
 
@@ -1882,15 +1727,6 @@ a {
 
   .esp-visual {
     width: 120px;
-  }
-
-  .demo-bar {
-    padding: 8px 14px;
-    gap: 9px;
-  }
-
-  .demo-note {
-    display: none;
   }
 
   .alert-row {

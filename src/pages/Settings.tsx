@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useStore } from '../state/store';
 import { DEFAULT_THRESHOLDS, GAS_LABELS } from '../model/evaluate';
-import type { GasKey } from '../model/types';
+import type { GasKey, GasUnit } from '../model/types';
 
 const GASES: GasKey[] = ['ch4', 'co', 'h2s'];
 
 export function Settings() {
   const { settings, updateSettings, provider, manholes } = useStore();
-  const unit = settings.gasUnit;
+  // Which unit band the threshold inputs below are editing. The unit shown on
+  // readings always comes from the device payload — never from this page.
+  const [editUnit, setEditUnit] = useState<GasUnit>('ppm');
   const th = settings.thresholds;
 
   const setGas = (g: GasKey, band: 'warn' | 'high' | 'crit', raw: string) => {
@@ -15,7 +18,10 @@ export function Settings() {
     updateSettings({
       thresholds: {
         ...th,
-        gases: { ...th.gases, [g]: { ...th.gases[g], [unit]: { ...th.gases[g][unit], [band]: v } } },
+        gases: {
+          ...th.gases,
+          [g]: { ...th.gases[g], [editUnit]: { ...th.gases[g][editUnit], [band]: v } },
+        },
       },
     });
   };
@@ -32,7 +38,7 @@ export function Settings() {
         <div>
           <h1 className="page-title">Settings</h1>
           <p className="page-desc">
-            Alarm thresholds and telemetry interpretation used across every page.
+            Alarm thresholds used across every page. Units are decided by the device payload.
           </p>
         </div>
         <button
@@ -47,32 +53,9 @@ export function Settings() {
         <section className="panel">
           <div className="panel-head">
             <h2 className="panel-title">Telemetry source</h2>
-            <span className="panel-note">{provider.kind}</span>
+            <span className="panel-note">baud auto-detected</span>
           </div>
           <div className="panel-body">
-            <div className="field">
-              <div>
-                <div className="field-label">Gas value units</div>
-                <div className="field-hint">
-                  Matches what the backend sends. Raw values are never shown as ppm.
-                </div>
-              </div>
-              <div className="seg" role="group" aria-label="Gas value units">
-                <button
-                  className={unit === 'ppm' ? 'on' : ''}
-                  onClick={() => updateSettings({ gasUnit: 'ppm' })}
-                >
-                  ppm
-                </button>
-                <button
-                  className={unit === 'raw' ? 'on' : ''}
-                  onClick={() => updateSettings({ gasUnit: 'raw' })}
-                >
-                  Raw ADC
-                </button>
-              </div>
-            </div>
-
             <div className="field">
               <div>
                 <div className="field-label">Poll interval</div>
@@ -90,21 +73,34 @@ export function Settings() {
             </div>
 
             <div className="info-block" style={{ paddingTop: 6 }}>
-              Source: <code>{provider.label}</code> implementing <code>TelemetryProvider</code>.
-              To go live, swap the provider for one that reads your gateway's{' '}
-              <code>Telemetry</code> payload (<code>manholeId</code>, <code>timestamp</code>,{' '}
-              <code>ch4</code>, <code>co</code>, <code>h2s</code>, <code>waterLevel</code>,{' '}
-              <code>temperature</code>, <code>humidity</code>, <code>coverStatus</code>,{' '}
-              <code>vibration</code>, <code>battery</code>, <code>wifiStatus</code>,{' '}
-              <code>signalStrength</code>, <code>deviceStatus</code>) — no UI changes needed.
+              Source: <code>{provider.label}</code> implementing <code>TelemetryProvider</code> —
+              real USB-serial readings only, no simulation. Baud is auto-detected (9600 first,
+              then 115200); the unit shown follows the payload's <code>gasUnit</code>, so raw
+              counts are never displayed as ppm. Manholes whose device has not reported keep
+              empty values. The{' '}
+              <code>Telemetry</code> payload is (<code>manholeId</code>, <code>timestamp</code>,{' '}
+              <code>hasData</code>, <code>gasUnit</code>, <code>ch4</code>, <code>co</code>,{' '}
+              <code>h2s</code>, <code>waterLevel</code>, <code>coverStatus</code>,{' '}
+              <code>vibration</code>, <code>battery</code>, <code>linkStatus</code>,{' '}
+              <code>linkDetail</code>, <code>deviceStatus</code>, all sensor fields nullable — no
+              UI changes needed to swap sources.
             </div>
           </div>
         </section>
 
         <section className="panel">
           <div className="panel-head">
-            <h2 className="panel-title">Gas thresholds · {unit === 'ppm' ? 'ppm' : 'raw ADC'}</h2>
-            <span className="panel-note">warning / high / critical</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h2 className="panel-title">Gas thresholds · {editUnit === 'ppm' ? 'ppm' : 'raw ADC'}</h2>
+              <div className="seg" role="group" aria-label="Threshold unit band">
+                <button className={editUnit === 'ppm' ? 'on' : ''} onClick={() => setEditUnit('ppm')}>
+                  ppm
+                </button>
+                <button className={editUnit === 'raw' ? 'on' : ''} onClick={() => setEditUnit('raw')}>
+                  Raw ADC
+                </button>
+              </div>
+            </div>
           </div>
           <div className="panel-body">
             {GASES.map((g) => (
@@ -113,27 +109,27 @@ export function Settings() {
                   <div className="field-label">
                     {GAS_LABELS[g].symbol} · {GAS_LABELS[g].name}
                   </div>
-                  <div className="field-hint">warn ≥ {th.gases[g][unit].warn}</div>
+                  <div className="field-hint">warn ≥ {th.gases[g][editUnit].warn}</div>
                 </div>
                 <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input
                     className="input"
                     type="number"
-                    value={th.gases[g][unit].warn}
+                    value={th.gases[g][editUnit].warn}
                     onChange={(e) => setGas(g, 'warn', e.target.value)}
                     aria-label={`${g} warning threshold`}
                   />
                   <input
                     className="input"
                     type="number"
-                    value={th.gases[g][unit].high}
+                    value={th.gases[g][editUnit].high}
                     onChange={(e) => setGas(g, 'high', e.target.value)}
                     aria-label={`${g} high risk threshold`}
                   />
                   <input
                     className="input"
                     type="number"
-                    value={th.gases[g][unit].crit}
+                    value={th.gases[g][editUnit].crit}
                     onChange={(e) => setGas(g, 'crit', e.target.value)}
                     aria-label={`${g} critical threshold`}
                   />
@@ -201,23 +197,22 @@ export function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            <h2 className="panel-title">About this prototype</h2>
-            <span className="panel-note">DEMO DATA</span>
+            <h2 className="panel-title">About this system</h2>
+            <span className="panel-note">real telemetry only</span>
           </div>
           <div className="panel-body info-block">
             <p style={{ margin: 0 }}>
-              Every value on this dashboard is <strong>simulated</strong> for demonstration. No
-              readings come from a physical ESP32-C3.
+              Every number on this dashboard comes from a device or shows an honest{' '}
+              <strong>no data</strong> state — there is no simulation anywhere. Press{' '}
+              <strong>Connect Arduino</strong> (bottom right) to feed MG-001 live readings over USB
+              serial; the remaining {manholes.length - 1} manholes display — until their own
+              devices are installed and report.
             </p>
             <p style={{ margin: '8px 0 0' }}>
-              The simulation models {manholes.length} manholes across five states — safe, warning,
-              high risk, critical and offline — and generates alerts whenever a sensor escalates.
-              Use the <strong>DEMO DATA</strong> bar at the bottom of the screen to force the
-              selected manhole into any state.
-            </p>
-            <p style={{ margin: '8px 0 0' }}>
-              Modelled channels: <code>CH₄</code>, <code>CO</code>, <code>H₂S</code>, water level,
-              temperature, humidity, cover, vibration, battery, Wi-Fi, RSSI and device status.
+              Channels: <code>CH₄</code>, <code>CO</code>, <code>H₂S</code>, water level, cover,
+              vibration, battery / USB power, serial link and device status — each rendered only
+              when the device actually reports it. Alerts are raised only by real state changes
+              (a sensor crossing a threshold, a device dropping its heartbeat).
             </p>
           </div>
         </section>

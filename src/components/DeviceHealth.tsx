@@ -1,49 +1,50 @@
 import type { ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { formatAgo, formatUptime, toneClass } from '../lib/format';
-import { IconBattery, IconWifi } from './icons';
+import { IconBattery, IconSerial } from './icons';
 
-/** Small illustrated ESP32-C3 controller board. */
-export function Esp32Board({ online, width = 92 }: { online: boolean; width?: number }) {
+/** Small illustrated Arduino Uno controller board. */
+export function ArduinoBoard({ online, width = 92 }: { online: boolean; width?: number }) {
   const led = online ? '#34d399' : '#8a93a5';
   return (
     <svg width={width} height={width * 0.78} viewBox="0 0 100 78" aria-hidden>
       <defs>
-        <linearGradient id="pcb" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#12362c" />
-          <stop offset="1" stopColor="#0c2620" />
+        <linearGradient id="pcb-uno" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#0d6d7d" />
+          <stop offset="1" stopColor="#0a5460" />
         </linearGradient>
       </defs>
-      <rect x="3" y="6" width="94" height="66" rx="6" fill="url(#pcb)" stroke="#1f5c4a" />
-      {/* header pins */}
-      {Array.from({ length: 7 }).map((_, i) => (
-        <rect key={i} x={10 + i * 12} y="66" width="7" height="6" rx="1.4" fill="#c9a227" opacity="0.85" />
+      {/* board */}
+      <rect x="3" y="6" width="94" height="66" rx="5" fill="url(#pcb-uno)" stroke="#128a9c" />
+      {/* USB-B connector */}
+      <rect x="1" y="14" width="17" height="15" rx="2" fill="#b9c0cb" stroke="#8a93a5" />
+      <rect x="4" y="17" width="11" height="9" rx="1.2" fill="#7d8695" />
+      {/* barrel power jack */}
+      <rect x="82" y="12" width="16" height="17" rx="2.5" fill="#15181d" stroke="#2a2f38" />
+      <circle cx="90" cy="20.5" r="4" fill="#0b0d11" />
+      {/* ATmega328P (DIP-28) */}
+      <rect x="36" y="24" width="34" height="30" rx="2.5" fill="#15181d" stroke="#2a2f38" />
+      <rect x="40" y="27" width="26" height="24" rx="1.6" fill="#1d2129" />
+      <path d="M50 24a4 4 0 0 0 6 0" stroke="#3a4250" fill="none" />
+      {/* crystal */}
+      <rect x="16" y="34" width="13" height="6" rx="3" fill="#c9ccd3" stroke="#8a93a5" />
+      {/* reset button */}
+      <rect x="16" y="16" width="9" height="9" rx="1.6" fill="#2b3039" stroke="#3a4250" />
+      {/* headers — digital top, power/analog bottom */}
+      {Array.from({ length: 8 }).map((_, i) => (
+        <rect key={`t${i}`} x={34 + i * 7.6} y="8" width="6" height="6" rx="1.2" fill="#15181d" />
       ))}
-      {/* MCU can */}
-      <rect x="34" y="24" width="30" height="26" rx="3" fill="#15181d" stroke="#2a2f38" />
-      <rect x="38" y="28" width="22" height="18" rx="2" fill="#1d2129" />
-      {/* RF can */}
-      <rect x="68" y="14" width="24" height="18" rx="2.5" fill="#20242c" stroke="#333a45" />
-      {/* PCB antenna trace */}
-      <path
-        d="M72 16h16M72 20h16M72 24h12M72 28h16"
-        stroke="#d8b64a"
-        strokeWidth="1.4"
-        opacity="0.75"
-        strokeLinecap="round"
-      />
-      {/* crystal + passives */}
-      <rect x="14" y="30" width="12" height="7" rx="1.5" fill="#2b3039" />
-      <rect x="14" y="44" width="8" height="6" rx="1.4" fill="#2b3039" />
-      <rect x="26" y="44" width="6" height="6" rx="1.4" fill="#2b3039" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <rect key={`b${i}`} x={12 + i * 7.6} y="64" width="6" height="6" rx="1.2" fill="#15181d" />
+      ))}
       {/* status LED */}
-      <circle cx="88" cy="58" r="4" fill={led} opacity={online ? 1 : 0.55} />
-      <circle cx="88" cy="58" r="7" fill={led} opacity={online ? 0.28 : 0.12} />
+      <circle cx="77" cy="58" r="3.6" fill={led} opacity={online ? 1 : 0.55} />
+      <circle cx="77" cy="58" r="6.6" fill={led} opacity={online ? 0.28 : 0.12} />
       {/* silkscreen */}
-      <text x="10" y="18" fill="#5fd8b0" fontSize="8.5" fontFamily="monospace" letterSpacing="0.6">
-        ESP32-C3
+      <text x="10" y="60" fill="#d7f3f8" fontSize="8.5" fontFamily="monospace" letterSpacing="0.6">
+        UNO
       </text>
-      <text x="10" y="60" fill="#3f9d7f" fontSize="6.5" fontFamily="monospace">
+      <text x="34" y="60" fill="#8fd6e2" fontSize="6.5" fontFamily="monospace">
         MG-IoT
       </text>
     </svg>
@@ -54,21 +55,23 @@ export function DeviceHealth() {
   const { selected, selectedTelemetry: t, bootTimes, now, status } = useStore();
   const online = t.deviceStatus === 'online';
   const uptime = online ? now - (bootTimes[selected.id] ?? now) : 0;
-  const battLevel = t.battery <= 30 ? 'tone-warning' : 'tone-safe';
+  const batt = t.battery;
+  const battLevel = batt !== null && batt <= 30 ? 'tone-warning' : 'tone-safe';
+  const linked = t.linkStatus === 'connected';
 
   const rows: [string, ReactNode][] = [
     ['Device ID', selected.device.id],
     ['Controller', selected.device.model],
     [
-      'Wi-Fi',
-      <span className={t.wifiStatus === 'connected' ? 'tone-safe' : 'tone-critical'}>
-        {t.wifiStatus === 'connected' ? 'Connected' : 'Disconnected'}
+      'Link',
+      <span className={linked ? 'tone-safe' : 'tone-critical'}>
+        {linked ? 'Connected' : 'Disconnected'}
       </span>,
     ],
-    ['Signal', t.signalStrength !== null ? `${t.signalStrength} dBm` : '—'],
+    ['Transport', t.linkDetail ?? '—'],
     ['Uptime', online ? formatUptime(uptime) : '—'],
     ['Firmware', selected.device.firmware],
-    ['Last heartbeat', formatAgo(t.timestamp, now)],
+    ['Last heartbeat', t.hasData ? formatAgo(t.timestamp, now) : '—'],
   ];
 
   return (
@@ -91,15 +94,27 @@ export function DeviceHealth() {
 
         <div className="dev-body">
           <div className="dev-rows">
-            <div className="dev-row" style={{ display: 'block' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span className="dev-key">Battery</span>
-                <span className={`dev-val ${battLevel}`}>{t.battery}%</span>
+            {!t.hasData ? (
+              <div className="dev-row">
+                <span className="dev-key">Power</span>
+                <span className="dev-val muted">—</span>
               </div>
-              <div className={`batt-bar ${battLevel}`}>
-                <div className="batt-fill" style={{ width: `${t.battery}%` }} />
+            ) : batt === null ? (
+              <div className="dev-row">
+                <span className="dev-key">Power</span>
+                <span className="dev-val tone-safe">USB powered</span>
               </div>
-            </div>
+            ) : (
+              <div className="dev-row" style={{ display: 'block' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                  <span className="dev-key">Battery</span>
+                  <span className={`dev-val ${battLevel}`}>{batt}%</span>
+                </div>
+                <div className={`batt-bar ${battLevel}`}>
+                  <div className="batt-fill" style={{ width: `${batt}%` }} />
+                </div>
+              </div>
+            )}
             {rows.map(([k, v]) => (
               <div className="dev-row" key={k}>
                 <span className="dev-key">{k}</span>
@@ -108,7 +123,7 @@ export function DeviceHealth() {
             ))}
           </div>
           <div className="esp-visual">
-            <Esp32Board online={online} width={92} />
+            <ArduinoBoard online={online} width={92} />
             <div
               style={{
                 display: 'flex',
@@ -119,8 +134,8 @@ export function DeviceHealth() {
                 marginTop: 6,
               }}
             >
-              {t.wifiStatus === 'connected' ? <IconWifi size={13} /> : <IconBattery size={13} />}
-              {t.wifiStatus === 'connected' ? 'Wi-Fi uplink' : 'No uplink'}
+              {linked ? <IconSerial size={13} /> : <IconBattery size={13} />}
+              {linked ? 'USB serial uplink' : 'No uplink'}
             </div>
           </div>
         </div>

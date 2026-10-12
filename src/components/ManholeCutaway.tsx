@@ -1,5 +1,6 @@
 import { useStore } from '../state/store';
 import { waterPct } from '../model/evaluate';
+import { fmtSensor } from '../lib/format';
 
 const CYAN = '#38bdf8';
 const LABEL = '#98a2b3';
@@ -9,31 +10,30 @@ interface Props {
   /** Optional overrides so the visual can be reused on the detail page. */
   pct?: number;
   gasText?: string;
-  envText?: string;
   waterText?: string;
   linkText?: string;
 }
 
 /**
  * Illustrated cutaway of the physical IoT installation:
- * cover, gas sensor, temp/humidity, ultrasonic level, vibration/tamper,
- * ESP32-C3 controller and the underground water, with glowing data links.
+ * cover, gas sensor, ultrasonic level, vibration/tamper, Arduino controller
+ * and the underground water, with glowing data links.
  */
 export function ManholeCutaway(inProps: Props) {
   const { selected, selectedTelemetry: t, settings } = useStore();
   const pct = inProps.pct ?? waterPct(t, selected);
   const gasText =
     inProps.gasText ??
-    (t.gasUnit === 'ppm'
-      ? `CH₄ ${Math.round(t.ch4)} · CO ${Math.round(t.co)} · H₂S ${Math.round(t.h2s)} ppm`
-      : `CH₄ ${Math.round(t.ch4)} · CO ${Math.round(t.co)} · H₂S ${Math.round(t.h2s)} raw`);
-  const envText = inProps.envText ?? `${t.temperature.toFixed(1)}°C · ${Math.round(t.humidity)}% RH`;
-  const waterText = inProps.waterText ?? `${t.waterLevel} cm · ${pct}%`;
+    (t.hasData
+      ? t.gasUnit === 'ppm'
+        ? `CH₄ ${fmtSensor(t.ch4)} · CO ${fmtSensor(t.co)} · H₂S ${fmtSensor(t.h2s)} ppm`
+        : `CH₄ ${fmtSensor(t.ch4)} · CO ${fmtSensor(t.co)} · H₂S ${fmtSensor(t.h2s)} raw`
+      : 'no telemetry');
+  const waterText =
+    inProps.waterText ?? (t.waterLevel === null ? 'no data' : `${t.waterLevel} cm · ${pct}%`);
   const linkText =
     inProps.linkText ??
-    (t.deviceStatus === 'online'
-      ? `Wi-Fi · ${t.signalStrength ?? '—'} dBm`
-      : 'link down');
+    (t.linkStatus === 'connected' ? (t.linkDetail ?? 'USB serial') : 'link down');
 
   // Water surface inside the shaft (interior runs y=118…402).
   const interiorTop = 118;
@@ -156,16 +156,15 @@ export function ManholeCutaway(inProps: Props) {
             )}
           </g>
 
-          {/* ---- data bus from sensors to ESP32 ---- */}
+          {/* ---- data bus from sensors to the Arduino ---- */}
           <g stroke={bus} strokeWidth="1.2" fill="none" opacity="0.55" strokeDasharray="4 4">
             <path d="M356 178 C 386 196, 396 226, 412 254" />
-            <path d="M430 156 C 430 190, 428 222, 430 246" />
             <path d="M404 136 C 420 170, 430 200, 436 246" />
             <path d="M386 124 C 372 150, 366 170, 360 196" />
           </g>
           {/* glowing link nodes */}
           {[
-            [356, 178], [430, 156], [404, 136], [386, 124], [440, 286],
+            [356, 178], [404, 136], [386, 124], [440, 286],
           ].map(([x, y], i) => (
             <circle
               key={i}
@@ -195,14 +194,6 @@ export function ManholeCutaway(inProps: Props) {
             <rect x="349" y="172" width="6" height="10" rx="1.5" fill="#39424f" />
           </g>
 
-          {/* ---- temperature / humidity (right wall) ---- */}
-          <g>
-            <rect x="428" y="144" width="27" height="22" rx="3" fill="#0f2f4a" stroke="#1f5c8a" />
-            <rect x="432" y="148" width="10" height="8" rx="1.4" fill="#20323f" />
-            <circle cx="448" cy="155" r="3" fill="#38bdf8" opacity="0.85" />
-            <rect x="452" y="149" width="6" height="12" rx="1.5" fill="#39424f" />
-          </g>
-
           {/* ---- ultrasonic water-level sensor (top of shaft) ---- */}
           <g>
             <rect x="364" y="112" width="44" height="18" rx="3" fill="#123a52" stroke="#1f6f9c" />
@@ -220,12 +211,12 @@ export function ManholeCutaway(inProps: Props) {
             />
           </g>
 
-          {/* ---- ESP32-C3 controller (right wall) ---- */}
+          {/* ---- Arduino controller (right wall) ---- */}
           <g>
-            <rect x="404" y="246" width="52" height="72" rx="4" fill="#0e2b24" stroke="#1f5c4a" />
+            <rect x="404" y="246" width="52" height="72" rx="4" fill="#0b4c57" stroke="#1f7d92" />
             <rect x="416" y="262" width="24" height="24" rx="2.5" fill="#15181d" stroke="#2a2f38" />
             <rect x="420" y="266" width="16" height="16" rx="1.5" fill="#1d2129" />
-            <g stroke="#d8b64a" strokeWidth="1.2" opacity="0.7">
+            <g stroke="#d7f3f8" strokeWidth="1.2" opacity="0.7">
               <path d="M410 250h40M410 254h40M410 258h30" />
             </g>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -233,23 +224,17 @@ export function ManholeCutaway(inProps: Props) {
             ))}
             <circle cx="447" cy="306" r="3.4" fill={online ? '#34d399' : '#8a93a5'} />
             <circle cx="447" cy="306" r="6.5" fill={online ? '#34d399' : '#8a93a5'} opacity="0.25" />
-            <text x="410" y="334" fill="#5fd8b0" fontSize="7.5" fontFamily="monospace">
-              ESP32-C3
+            <text x="410" y="334" fill="#bfeef7" fontSize="7.5" fontFamily="monospace">
+              ARDUINO
             </text>
           </g>
 
-          {/* ---- Wi-Fi uplink ---- */}
+          {/* ---- USB serial link to the surface ---- */}
           <g stroke={online ? '#38bdf8' : '#8a93a5'} fill="none" strokeLinecap="round" opacity="0.85">
-            <path d="M486 74 a22 22 0 0 1 22 -22" strokeWidth="1.6" />
-            <path d="M486 84 a32 32 0 0 1 32 -32" strokeWidth="1.6" opacity="0.7" />
-            <path d="M486 94 a42 42 0 0 1 42 -42" strokeWidth="1.6" opacity="0.45" />
-            <circle cx="484" cy="78" r="3.2" fill={online ? '#38bdf8' : '#8a93a5'} stroke="none" />
-            <path
-              d={`M448 262 C 470 230, 476 170, 484 96`}
-              strokeWidth="1.1"
-              strokeDasharray="4 5"
-              opacity="0.5"
-            />
+            <path d="M448 262 C 472 226, 486 156, 500 112" strokeWidth="1.6" strokeDasharray="5 5" />
+            <rect x="490" y="98" width="22" height="12" rx="2" strokeWidth="1.4" fill="#1a1f28" />
+            <path d="M496 98v-7M506 98v-7" strokeWidth="1.4" />
+            <circle cx="448" cy="262" r="3.2" fill={online ? '#38bdf8' : '#8a93a5'} stroke="none" />
           </g>
 
           {/* ---- labels: left ---- */}
@@ -272,11 +257,11 @@ export function ManholeCutaway(inProps: Props) {
 
           {/* ---- labels: right ---- */}
           <g fontFamily="sans-serif" fontSize="11" letterSpacing="1.4" fill={LABEL} textAnchor="end">
-            <text x="744" y="52">WI-FI UPLINK</text>
+            <text x="744" y="52">USB SERIAL</text>
             <text x="744" y="67" fontSize="10" fill={online ? '#7cc7ee' : SUB} letterSpacing="0.6">
               {linkText}
             </text>
-            <line x1="640" y1="56" x2="512" y2="60" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
+            <line x1="640" y1="56" x2="516" y2="94" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
 
             <text x="744" y="146">ULTRASONIC LEVEL</text>
             <text x="744" y="161" fontSize="10" fill={SUB} letterSpacing="0.6">
@@ -285,23 +270,20 @@ export function ManholeCutaway(inProps: Props) {
             <line x1="556" y1="150" x2="414" y2="136" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
             <circle cx="414" cy="136" r="2.4" fill="rgba(255,255,255,0.45)" />
 
-            <text x="744" y="222">TEMPERATURE / HUMIDITY</text>
-            <text x="744" y="237" fontSize="10" fill={SUB} letterSpacing="0.6">
-              {envText}
-            </text>
-            <line x1="566" y1="226" x2="457" y2="158" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
-            <circle cx="457" cy="158" r="2.4" fill="rgba(255,255,255,0.45)" />
-
-            <text x="744" y="292">ESP32-C3 CONTROLLER</text>
+            <text x="744" y="292">ARDUINO CONTROLLER</text>
             <text x="744" y="307" fontSize="10" fill={online ? '#7ee6bf' : SUB} letterSpacing="0.6">
-              {online ? `${t.wifiStatus} · ${t.signalStrength ?? '—'} dBm` : 'device offline'}
+              {online
+                ? `${t.linkStatus}${t.linkDetail ? ` · ${t.linkDetail}` : ''}`
+                : t.hasData
+                  ? 'device offline'
+                  : 'no connection'}
             </text>
             <line x1="586" y1="296" x2="474" y2="286" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
             <circle cx="474" cy="286" r="2.4" fill="rgba(255,255,255,0.45)" />
 
             <text x="744" y="376">UNDERGROUND WATER</text>
             <text x="744" y="391" fontSize="10" fill={SUB} letterSpacing="0.6">
-              depth {selected.depthCm} cm · {pct}%
+              depth {selected.depthCm} cm · {t.waterLevel === null ? 'no data' : `${pct}%`}
             </text>
             <line x1="596" y1="380" x2="474" y2={Math.max(waterY + 14, 200)} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" />
             <circle cx="474" cy={Math.max(waterY + 14, 200)} r="2.4" fill="rgba(255,255,255,0.45)" />
@@ -312,10 +294,9 @@ export function ManholeCutaway(inProps: Props) {
           {[
             'Manhole cover',
             'Gas sensor (CH₄ / CO / H₂S)',
-            'Temp & humidity',
             'Ultrasonic water level',
             'Vibration / tamper',
-            'ESP32-C3 controller',
+            'Arduino controller',
             'Underground water',
           ].map((l) => (
             <span className="legend-item" key={l}>

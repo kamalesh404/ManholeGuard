@@ -44,15 +44,12 @@ export function Header() {
       </nav>
 
       <div className="header-meta">
-        <span className="demo-badge" title="All telemetry in this prototype is simulated">
-          DEMO DATA
-        </span>
         <div className="header-mh">
           <div className="header-mh-id">
             {selected.id} <span className="muted">·</span> {selected.name}
           </div>
           <div className="header-updated">
-            Last update: {formatAgo(selectedTelemetry.timestamp, now)}
+            Last update: {selectedTelemetry.hasData ? formatAgo(selectedTelemetry.timestamp, now) : 'never'}
           </div>
         </div>
         <span

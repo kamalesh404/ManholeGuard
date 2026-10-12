@@ -1,7 +1,7 @@
 import { useStore } from '../state/store';
 import { assess, GAS_LABELS } from '../model/evaluate';
 import type { GasKey } from '../model/types';
-import { toneClass } from '../lib/format';
+import { fmtSensor, toneClass } from '../lib/format';
 import { IconGas } from './icons';
 
 const GASES: GasKey[] = ['ch4', 'co', 'h2s'];
@@ -12,7 +12,8 @@ function GasCard({ gas }: { gas: GasKey }) {
   const sensor = a.sensors.find((s) => s.key === gas)!;
   const band = settings.thresholds.gases[gas][t.gasUnit];
   const scaleMax = band.crit * 1.15;
-  const pct = Math.min(100, (Number(sensor.value) / scaleMax) * 100);
+  const known = typeof sensor.value === 'number';
+  const pct = known ? Math.min(100, ((sensor.value as number) / scaleMax) * 100) : 0;
   const meta = GAS_LABELS[gas];
   const tone = toneClass(sensor.level);
 
@@ -35,8 +36,12 @@ function GasCard({ gas }: { gas: GasKey }) {
       </div>
 
       <div className="gas-reading">
-        <span className={`gas-value ${tone}`}>{Math.round(Number(sensor.value))}</span>
-        <span className="gas-unit">{t.gasUnit === 'ppm' ? 'ppm' : 'raw'}</span>
+        <span className={`gas-value ${tone}`}>
+          {known ? fmtSensor(sensor.value as number) : '—'}
+        </span>
+        <span className="gas-unit">
+          {known ? (t.gasUnit === 'ppm' ? 'ppm' : 'raw') : ''}
+        </span>
       </div>
 
       {t.gasUnit === 'raw' && <span className="raw-tag">RAW SENSOR LEVEL</span>}
